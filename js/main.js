@@ -90,20 +90,39 @@ function render () {
 var Mouse = function () {
 	this.down = false;
 	this.position = new THREE.Vector3( 1.0, .5, .5 );
-	this.handler = function (event) {
-		event.preventDefault();
-		if (event.type == "mousedown") {
+	this.handler = function (evt) {
+		evt.preventDefault();
+		if (evt.type == "mousedown") {
 			$C.mouse.down = true;
 		}
-		if (event.type == "mouseup") {
+		if (evt.type == "mouseup") {
 			$C.mouse.down = false;
 		}
-		if (event.type == "mousemove") {
+		if (evt.type == "mousemove") { // TODO: Think this out a bit more. @CQ
 			if ($C.mouse.down) {
-				$C.mouse.position.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-				$C.mouse.position.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-				$C.mouse.position.z = 1;
+				$C.mouse.position.x = ( evt.clientX / window.innerWidth ) * 2 - 1;
+				$C.mouse.position.y = - ( evt.clientY / window.innerHeight ) * 2 + 1;
+				$C.mouse.position.z = .5;
 			}
 		}
+	}
+}
+
+var Assets = function () {
+	this.url = "art/js/";
+	this.ext = ".js";
+	
+	this.list = {
+		smallCylinder: "cylinder_small"
+	};
+	
+	this.loader = new THREE.JSONLoader;
+	
+	this.load = function (req) {
+		$C.assets.loader.load({model: this.url + req + this.ext, callback: $C.assets.geometry});
+	}
+	
+	this.geometry = function (geo) {
+		
 	}
 }
