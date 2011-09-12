@@ -1,82 +1,67 @@
-var size = {x: window.innerWidth, y: window.innerHeight};
-var cam = {
-	angle: 45,
-	aspect: size.x / size.y,
-	near: 1,
-	far: 1000
-};
-var container;
-var camera, scene, renderer;
-var sphere;
+/*
+	Mostly scene and basic Three.js functionality in this file.
+*/
 
+// _The_ Global variable.
 var Data = function () {
 	this.mouse;
+	this.size = {x: window.innerWidth, y: window.innerHeight};
+	this.cam = {
+		angle: 45,
+		aspect: this.size.x / this.size.y,
+		near: 1,
+		far: 1000
+	};
 }
 
 function init() {
 	window.$C = new Data();
-	$C.assets = new Assets();
+	$C.assets = new Assets(); 
+	$C.assets.init();
 	
-	container = document.createElement('div');
-	container.style.backgroundColor = "black";
-	document.body.appendChild(container);
+	$C.container = document.createElement('div');
+	$C.container.style.backgroundColor = "black";
+	document.body.appendChild($C.container);
 	
-	renderer = new THREE.CanvasRenderer();
-	camera = new THREE.Camera(cam.angle, cam.aspect, cam.near, cam.far);
-	scene = new THREE.Scene();
+	$C.renderer = new THREE.CanvasRenderer();
+	$C.camera = new THREE.Camera($C.cam.angle, $C.cam.aspect, $C.cam.near, $C.cam.far);
+	$C.scene = new THREE.Scene();
 	
-	camera.position.z = 300;
+	$C.camera.position.z = 300;
 	
-	renderer.setSize(size.x, size.y);
+	$C.renderer.setSize($C.size.x, $C.size.y);
 	
-	container.appendChild(renderer.domElement);
+	$C.container.appendChild($C.renderer.domElement);
 	
-	// Scene Geometry
-	var radius = 50, segments = 16, rings = 16;
-	
-	var sphereMaterial = new THREE.MeshLambertMaterial({
-		color: 0xCC0000,
-		shading: THREE.FlatShading
-	//	vertexColors: THREE.VertexColors
-	});
-	
-	sphere = new THREE.Mesh(
-	//	new THREE.SphereGeometry(radius, segments, rings), sphereMaterial
-		new THREE.CubeGeometry(100, 100, 100), sphereMaterial
-	);
-	sphere.overdraw = true;
-//	sphere.position = THREE.Vector3(0,0,0);
-//	scene.addChild(sphere);
-	
-	// Lighting
-	var pointLight = new THREE.PointLight( 0xFFFFFF );
-	
-	pointLight.position.x = 150;
-	pointLight.position.y = 150;
-	pointLight.position.z = 150;
-	
-	scene.addLight(pointLight);
+	// 'Static' update function.
+	$C.update = function () {
+		if ($C.assets.instances[0]) {
+			$C.assets.instances[0].rotation.y = $C.mouse.position.x;
+			$C.assets.instances[0].rotation.x = $C.mouse.position.y;
+			$C.assets.instances[0].rotation.z = $C.mouse.position.z;
+		}
+		
+		$C.renderer.render($C.scene, $C.camera);
+	}
 	
 	// Events
 	$C.mouse = new Mouse();
-	
-	document.addEventListener( 'mousemove', $C.mouse.handler, false );
-	document.addEventListener( 'mousedown', $C.mouse.handler, false );
-	document.addEventListener( 'mouseup', $C.mouse.handler, false );
-	
-	// CAD
-	cad_test();
+	$C.mouse.init();
 	
 	// Load Test
 	$C.assets.load("smallCylinder");
 	
+	// Lighting
+	$C.lighting = new Lighting();
+	$C.lighting.create({x: 150, y: 150, z: 150}, 0xFFFFFF);
+	$C.lighting.create({x: -150, y: -150, z: 150}, 0xFFFFFF);
 	
 	// Render
 	animate();
 }
 
 function animate () {
-	render();
+	$C.update();
 	
 	if (window.requestAnimationFrame)
 		window.requestAnimationFrame(animate);
@@ -84,20 +69,17 @@ function animate () {
 		window.webkitRequestAnimationFrame(animate);
 }
 
-function render () {
-	if ($C.assets.instances[0]) {
-		$C.assets.instances[0].rotation.y = $C.mouse.position.x;
-		$C.assets.instances[0].rotation.x = $C.mouse.position.y;
-		$C.assets.instances[0].rotation.z = $C.mouse.position.z;
-	}
-	
-	renderer.render(scene, camera);
-}
-
 var Mouse = function () {
 	this.down = false;
 	this.position = new THREE.Vector3( 1.0, .5, .5 );
 	this.last = {x: 0, y: 0};
+	
+	this.init = function () {
+		// Add events listeners to document.
+		document.addEventListener( 'mousemove', $C.mouse.handler, false );
+		document.addEventListener( 'mousedown', $C.mouse.handler, false );
+		document.addEventListener( 'mouseup', $C.mouse.handler, false );
+	}
 	
 	this.handler = function (evt) {
 		evt.preventDefault();
@@ -128,6 +110,7 @@ var Mouse = function () {
 var Assets = function () {
 	this.url = "art/js/";
 	this.ext = ".js";
+	this.loader;
 	
 	this.list = {
 		smallCylinder: "cylinder_small"
@@ -135,8 +118,10 @@ var Assets = function () {
 	
 	this.instances = [];
 	
-	this.loader = new THREE.JSONLoader(true);
-	document.body.appendChild(this.loader.statusDomElement);
+	this.init = function () {
+		this.loader = new THREE.JSONLoader(true);
+		document.body.appendChild(this.loader.statusDomElement);
+	}
 	
 	this.load = function (req) {
 		$C.assets.loader.load({model: this.url + this.list[req] + this.ext, callback: $C.assets.geometry});
@@ -150,9 +135,23 @@ var Assets = function () {
 			})
 		)
 		
+		mesh.overdraw = true;
 		mesh.scale.x = mesh.scale.y = mesh.scale.z = 50.0;
-		scene.addChild(mesh);
+		$C.scene.addChild(mesh);
 		
 		$C.assets.instances.push(mesh);
+	}
+}
+
+var Lighting = function () {
+	this.instances = [];
+	
+	this.create = function (pos, color) {
+		var light = new THREE.PointLight (color);
+		light.position.x = pos.x;
+		light.position.y = pos.y;
+		light.position.z = pos.z;
+		$C.scene.addLight(light);
+		$C.lighting.instances.push(light);
 	}
 }
