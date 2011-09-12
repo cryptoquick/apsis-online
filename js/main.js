@@ -15,6 +15,7 @@ var Data = function () {
 
 function init() {
 	window.$C = new Data();
+	$C.assets = new Assets();
 	
 	container = document.createElement('div');
 	container.style.backgroundColor = "black";
@@ -45,7 +46,7 @@ function init() {
 	);
 	sphere.overdraw = true;
 //	sphere.position = THREE.Vector3(0,0,0);
-	scene.addChild(sphere);
+//	scene.addChild(sphere);
 	
 	// Lighting
 	var pointLight = new THREE.PointLight( 0xFFFFFF );
@@ -63,11 +64,15 @@ function init() {
 	document.addEventListener( 'mousedown', $C.mouse.handler, false );
 	document.addEventListener( 'mouseup', $C.mouse.handler, false );
 	
-	// Render
-	animate();
-	
 	// CAD
 	cad_test();
+	
+	// Load Test
+	$C.assets.load("smallCylinder");
+	
+	
+	// Render
+	animate();
 }
 
 function animate () {
@@ -80,9 +85,11 @@ function animate () {
 }
 
 function render () {
-	sphere.rotation.y = $C.mouse.position.x;
-	sphere.rotation.x = $C.mouse.position.y;
-	sphere.rotation.z = $C.mouse.position.z;
+	if ($C.assets.instances[0]) {
+		$C.assets.instances[0].rotation.y = $C.mouse.position.x;
+		$C.assets.instances[0].rotation.x = $C.mouse.position.y;
+		$C.assets.instances[0].rotation.z = $C.mouse.position.z;
+	}
 	
 	renderer.render(scene, camera);
 }
@@ -90,19 +97,29 @@ function render () {
 var Mouse = function () {
 	this.down = false;
 	this.position = new THREE.Vector3( 1.0, .5, .5 );
+	this.last = {x: 0, y: 0};
+	
 	this.handler = function (evt) {
 		evt.preventDefault();
 		if (evt.type == "mousedown") {
 			$C.mouse.down = true;
+			$C.mouse.last.x = evt.clientX;
+			$C.mouse.last.y = evt.clientY;
 		}
 		if (evt.type == "mouseup") {
 			$C.mouse.down = false;
 		}
 		if (evt.type == "mousemove") { // TODO: Think this out a bit more. @CQ
 			if ($C.mouse.down) {
-				$C.mouse.position.x = ( evt.clientX / window.innerWidth ) * 2 - 1;
-				$C.mouse.position.y = - ( evt.clientY / window.innerHeight ) * 2 + 1;
+				var yaw = (evt.clientX - $C.mouse.last.x) * 0.5;
+				var pitch = (evt.clientY - $C.mouse.last.y) * 0.5;
+				
+				$C.mouse.position.x += yaw * 0.01; // * 2 - 1;
+				$C.mouse.position.y += pitch * 0.01; // * 2 + 1;
 				$C.mouse.position.z = .5;
+				
+				$C.mouse.last.x = evt.clientX;
+				$C.mouse.last.y = evt.clientY;
 			}
 		}
 	}
@@ -116,13 +133,26 @@ var Assets = function () {
 		smallCylinder: "cylinder_small"
 	};
 	
-	this.loader = new THREE.JSONLoader;
+	this.instances = [];
+	
+	this.loader = new THREE.JSONLoader(true);
+	document.body.appendChild(this.loader.statusDomElement);
 	
 	this.load = function (req) {
-		$C.assets.loader.load({model: this.url + req + this.ext, callback: $C.assets.geometry});
+		$C.assets.loader.load({model: this.url + this.list[req] + this.ext, callback: $C.assets.geometry});
 	}
 	
 	this.geometry = function (geo) {
+		var mesh = new THREE.Mesh(
+			geo, new THREE.MeshLambertMaterial({
+				color: 0x00CC00,
+				shading: THREE.FlatShading
+			})
+		)
 		
+		mesh.scale.x = mesh.scale.y = mesh.scale.z = 50.0;
+		scene.addChild(mesh);
+		
+		$C.assets.instances.push(mesh);
 	}
 }
