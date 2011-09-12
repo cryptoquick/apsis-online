@@ -14,8 +14,11 @@ var Data = function () {
 	};
 }
 
-function init() {
+function Init() {
 	window.$C = new Data();
+	
+	$C.library = Library;
+	
 	$C.assets = new Assets(); 
 	$C.assets.init();
 	
@@ -44,12 +47,21 @@ function init() {
 		$C.renderer.render($C.scene, $C.camera);
 	}
 	
+	$C.animate = function () {
+		$C.update();
+		
+		if (window.requestAnimationFrame)
+			window.requestAnimationFrame($C.animate);
+		else if (window.webkitRequestAnimationFrame)
+			window.webkitRequestAnimationFrame($C.animate);
+	}
+	
 	// Events
 	$C.mouse = new Mouse();
 	$C.mouse.init();
 	
 	// Load Test
-	$C.assets.load("smallCylinder");
+	// $C.assets.load("smallCylinder");
 	
 	// Lighting
 	$C.lighting = new Lighting();
@@ -57,16 +69,10 @@ function init() {
 	$C.lighting.create({x: -150, y: -150, z: 150}, 0xFFFFFF);
 	
 	// Render
-	animate();
-}
-
-function animate () {
-	$C.update();
+	$C.animate();
 	
-	if (window.requestAnimationFrame)
-		window.requestAnimationFrame(animate);
-	else if (window.webkitRequestAnimationFrame)
-		window.webkitRequestAnimationFrame(animate);
+	// Voxel Test
+	
 }
 
 var Mouse = function () {
@@ -112,34 +118,52 @@ var Assets = function () {
 	this.ext = ".js";
 	this.loader;
 	
-	this.list = {
-		smallCylinder: "cylinder_small"
-	};
-	
+	this.meshes = {};
 	this.instances = [];
+	
+	this.lastReq = "";
 	
 	this.init = function () {
 		this.loader = new THREE.JSONLoader(true);
 		document.body.appendChild(this.loader.statusDomElement);
+		
+		// Load all meshes from server.
+		for (var key in $C.library.list) {
+			var name = $C.library.list[key];
+			this.load(name);
+		}
 	}
 	
 	this.load = function (req) {
-		$C.assets.loader.load({model: this.url + this.list[req] + this.ext, callback: $C.assets.geometry});
+		$C.assets.loader.load({model: this.url + req + this.ext, callback: $C.assets.loaded});
+		$C.assets.lastReq = req;
 	}
 	
-	this.geometry = function (geo) {
+	this.loaded = function (geo) {
+		$C.assets.meshes[$C.assets.lastReq] = geo;
+		testVoxel();
+	}
+	
+	this.instantiate = function (name, pos) {
 		var mesh = new THREE.Mesh(
-			geo, new THREE.MeshLambertMaterial({
+			$C.assets.meshes[$C.library.list[name]], new THREE.MeshLambertMaterial({
 				color: 0x00CC00,
 				shading: THREE.FlatShading
 			})
 		)
 		
 		mesh.overdraw = true;
+		
 		mesh.scale.x = mesh.scale.y = mesh.scale.z = 50.0;
+		mesh.position.x = pos.x;
+		mesh.position.y = pos.y;
+		mesh.position.z = pos.z;
+		
 		$C.scene.addChild(mesh);
 		
 		$C.assets.instances.push(mesh);
+		
+			
 	}
 }
 
