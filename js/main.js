@@ -28,6 +28,7 @@ function Init() {
 	
 	$C.renderer = new THREE.CanvasRenderer();
 	$C.camera = new THREE.Camera($C.cam.angle, $C.cam.aspect, $C.cam.near, $C.cam.far);
+//	$C.camera.useTarget = false;
 	$C.scene = new THREE.Scene();
 	
 	$C.camera.position.z = 300;
@@ -38,11 +39,19 @@ function Init() {
 	
 	// 'Static' update function.
 	$C.update = function () {
-		if ($C.assets.instances[0]) {
-			$C.assets.instances[0].rotation.y = $C.mouse.position.x;
-			$C.assets.instances[0].rotation.x = $C.mouse.position.y;
-			$C.assets.instances[0].rotation.z = $C.mouse.position.z;
-		}
+	//	if ($C.assets.instances[0]) {
+	
+		var accum = new THREE.Matrix4().identity();
+		var rot = new THREE.Matrix4();
+		
+		rot.setRotationY(-$C.mouse.position.x);
+		accum.multiplySelf(rot);
+		rot.setRotationX($C.mouse.position.y);
+		accum.multiplySelf(rot);
+		rot.setTranslation(0, 0, 300);
+		accum.multiplySelf(rot);
+		
+		$C.camera.position = accum.extractPosition;
 		
 		$C.renderer.render($C.scene, $C.camera);
 	}
