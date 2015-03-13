@@ -1,0 +1,1 @@
+Apsis is a simulation game that aims to tie together concepts of physics, math, and engineering, to create a fun and educational world, all in the web browser, using modern technologies!
